@@ -6,6 +6,8 @@ export enum BetType {
   ODD = 'odd',
 }
 
+export type RoundStatus = 'betting' | 'spinning';
+
 export interface Bet {
   playerId: string;
   type: BetType;
@@ -13,9 +15,20 @@ export interface Bet {
   number?: number;
 }
 
+export interface Round {
+  id: string;
+  status: RoundStatus;
+  closesAt: number;
+}
+
 export interface RoundState {
   id: string;
-  status: 'betting' | 'spinning';
+  status: RoundStatus;
   closesAt: string;
   betsCount: number;
+}
+
+export interface RoundResult {
+  number: number;
+  payouts: Record<string, number>;
 }

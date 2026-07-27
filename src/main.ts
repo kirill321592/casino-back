@@ -1,21 +1,15 @@
-import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { env } from './common/config/env';
+import { wsValidationPipe } from './common/ws/gateway.options';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const origin = process.env.CORS_ORIGIN?.split(',') ?? true;
 
-  app.enableCors({ origin, credentials: true });
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      forbidNonWhitelisted: true,
-    }),
-  );
+  app.enableCors({ origin: env.corsOrigin, credentials: true });
+  app.useGlobalPipes(wsValidationPipe);
 
-  await app.listen(Number(process.env.PORT) || 3000);
+  await app.listen(env.port);
 }
 
 void bootstrap();

@@ -1,5 +1,7 @@
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
-import { BetType } from '../types/roulette.types';
+import { env } from '../../../common/config/env';
+import { POCKET_COUNT } from '../roulette.constants';
+import { BetType } from '../roulette.types';
 
 export class PlaceBetDto {
   @IsString()
@@ -10,13 +12,13 @@ export class PlaceBetDto {
 
   @IsInt()
   @Min(1)
-  @Max(100000)
+  @Max(env.maxBet)
   amount!: number;
 
   // Required for straight bets; ignored for colour bets.
   @IsOptional()
   @IsInt()
   @Min(0)
-  @Max(36)
+  @Max(POCKET_COUNT - 1)
   number?: number;
 }

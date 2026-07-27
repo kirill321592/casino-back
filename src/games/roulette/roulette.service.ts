@@ -1,15 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { env } from '../../common/config/env';
+import { RngService } from '../../common/rng/rng.service';
 import { PlaceBetDto } from './dto/place-bet.dto';
-import { Bet, BetType, RoundState } from './types/roulette.types';
-
-const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
+import {
+  OUTSIDE_MULTIPLIER,
+  POCKET_COUNT,
+  RED_NUMBERS,
+  STRAIGHT_MULTIPLIER,
+} from './roulette.constants';
+import { Bet, BetType, Round, RoundResult, RoundState } from './roulette.types';
 
 @Injectable()
 export class RouletteService {
-  private readonly roundDurationMs = Number(process.env.ROUND_DURATION_MS) || 15_000;
-  private round = this.createRound();
+  private round: Round = this.createRound();
   private bets: Bet[] = [];
+
+  constructor(private readonly rng: RngService) {}
 
   getState(): RoundState {
     return {
@@ -33,9 +40,9 @@ export class RouletteService {
     return placedBet;
   }
 
-  spin(): { number: number; payouts: Record<string, number> } {
-    this.round.status = 'spinning' as any;
-    const number = Math.floor(Math.random() * 37);
+  spin(): RoundResult {
+    this.round.status = 'spinning';
+    const number = this.rng.int(POCKET_COUNT);
     const payouts = this.bets.reduce<Record<string, number>>((result, bet) => {
       const multiplier = this.getMultiplier(bet, number);
       if (multiplier) result[bet.playerId] = (result[bet.playerId] ?? 0) + bet.amount * multiplier;
@@ -50,16 +57,16 @@ export class RouletteService {
     return this.getState();
   }
 
-  private createRound() {
-    return { id: randomUUID(), status: 'betting' as const, closesAt: Date.now() + this.roundDurationMs };
+  private createRound(): Round {
+    return { id: randomUUID(), status: 'betting', closesAt: Date.now() + env.roundDurationMs };
   }
 
   private getMultiplier(bet: Bet, number: number): number {
-    if (bet.type === BetType.STRAIGHT) return bet.number === number ? 36 : 0;
+    if (bet.type === BetType.STRAIGHT) return bet.number === number ? STRAIGHT_MULTIPLIER : 0;
     if (number === 0) return 0;
-    if (bet.type === BetType.RED) return RED_NUMBERS.has(number) ? 2 : 0;
-    if (bet.type === BetType.BLACK) return !RED_NUMBERS.has(number) ? 2 : 0;
-    if (bet.type === BetType.EVEN) return number % 2 === 0 ? 2 : 0;
-    return number % 2 === 1 ? 2 : 0;
+    if (bet.type === BetType.RED) return RED_NUMBERS.has(number) ? OUTSIDE_MULTIPLIER : 0;
+    if (bet.type === BetType.BLACK) return !RED_NUMBERS.has(number) ? OUTSIDE_MULTIPLIER : 0;
+    if (bet.type === BetType.EVEN) return number % 2 === 0 ? OUTSIDE_MULTIPLIER : 0;
+    return number % 2 === 1 ? OUTSIDE_MULTIPLIER : 0;
   }
 }
