@@ -8,7 +8,7 @@ export interface SlotSymbol {
   payout2: number;
 }
 
-/** Sent on connect so the client can render the paytable from the server. */
+/** Fetched by the client so the paytable it renders comes from the server. */
 export interface SlotsPaytable {
   reelCount: number;
   symbols: Array<Omit<SlotSymbol, 'weight'>>;

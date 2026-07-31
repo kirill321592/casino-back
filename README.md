@@ -1,7 +1,8 @@
-# Casino WebSocket backend
+# Casino backend
 
-A small NestJS + Socket.IO server hosting two games: roulette and slots. Each game owns a Socket.IO
-namespace and a module under `src/games/`.
+A small NestJS server hosting two games: roulette and slots. Each game owns a module under
+`src/games/` and picks the transport its rules need — roulette a Socket.IO namespace, since its
+rounds are shared and server-timed; slots plain HTTP, since a spin is one request with one answer.
 
 ## Run
 
@@ -19,8 +20,8 @@ src/
   common/            shared across games (env config, RNG, gateway options)
   games/
     games.module.ts  registers every game module
-    roulette/        round-based game: /roulette namespace
-    slots/           request/response game: /slots namespace
+    roulette/        round-based game: /roulette socket namespace
+    slots/           request/response game: /slots HTTP routes
 ```
 
 Adding a third game means adding a folder under `src/games/` and listing its module in `games.module.ts`.
@@ -43,21 +44,20 @@ Payouts include the returned stake.
 
 ## Slots protocol
 
-Connect to the `/slots` namespace. Spins are independent — there is no shared round. On connection the
-server emits `slots:paytable` with the symbols and their multipliers.
+Plain HTTP — spins are independent, so there is no shared round and nothing to push.
 
-| Client event | Payload | Server events |
+| Route | Body | Response |
 | --- | --- | --- |
-| `slots:spin` | `{ bet }` | `slots:result` |
-| — | — | `slots:paytable` (on connect) |
+| `GET /slots/paytable` | — | `{ reelCount, symbols: [{ symbol, payout3, payout2 }] }` |
+| `POST /slots/spin` | `{ bet }` | `{ reels, bet, multiplier, winnings }` |
 
-`slots:result` returns `{ reels, bet, multiplier, winnings }`. Three of a kind pays `payout3`, a pair pays
-`payout2`, and the best matching line wins. Unlike roulette, `winnings` does **not** include the stake.
+Three of a kind pays `payout3`, a pair pays `payout2`, and the best matching line wins. Unlike
+roulette, `winnings` does **not** include the stake.
 
 ## Errors
 
-Any namespace emits `game:error` with `{ message }` when a payload fails validation, e.g.
-`{ "message": "bet must not be less than 1" }`.
+Both transports report failures as `{ message }`. Roulette emits it as a `game:error` event; slots
+returns it as the body of a 4xx response, e.g. `400 { "message": "bet must not be less than 1" }`.
 
 ## Money
 

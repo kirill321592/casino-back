@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { RngModule } from '../../common/rng/rng.module';
-import { SlotsGateway } from './slots.gateway';
+import { SlotsController } from './slots.controller';
 import { SlotsService } from './slots.service';
 
 @Module({
   imports: [RngModule],
-  providers: [SlotsGateway, SlotsService],
+  controllers: [SlotsController],
+  providers: [SlotsService],
 })
 export class SlotsModule {}

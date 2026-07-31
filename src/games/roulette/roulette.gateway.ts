@@ -8,14 +8,15 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { env } from '../../common/config/env';
-import { gatewayOptions, wsValidationPipe } from '../../common/ws/gateway.options';
+import { validationPipe } from '../../common/validation';
+import { gatewayOptions } from '../../common/ws/gateway.options';
 import { WsErrorFilter } from '../../common/ws/ws-error.filter';
 import { PlaceBetDto } from './dto/place-bet.dto';
 import { ROULETTE_NAMESPACE } from './roulette.constants';
 import { RouletteService } from './roulette.service';
 
 @WebSocketGateway(gatewayOptions(ROULETTE_NAMESPACE))
-@UsePipes(wsValidationPipe)
+@UsePipes(validationPipe)
 @UseFilters(WsErrorFilter)
 export class RouletteGateway implements OnModuleInit {
   private readonly logger = new Logger(RouletteGateway.name);

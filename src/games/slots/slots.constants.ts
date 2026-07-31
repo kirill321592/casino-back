@@ -1,7 +1,5 @@
 import { SlotSymbol } from './slots.types';
 
-export const SLOTS_NAMESPACE = '/slots';
-
 export const REEL_COUNT = 3;
 
 export const SLOT_SYMBOLS: readonly SlotSymbol[] = [
