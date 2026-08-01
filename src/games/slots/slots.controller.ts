@@ -1,4 +1,7 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '../../auth/auth.guard';
+import { CurrentUser } from '../../auth/current-user.decorator';
+import { User } from '../../users/users.types';
 import { SpinSlotsDto } from './dto/spin-slots.dto';
 import { SlotsService } from './slots.service';
 import { SlotsPaytable, SpinResult } from './slots.types';
@@ -12,6 +15,7 @@ import { SlotsPaytable, SpinResult } from './slots.types';
 export class SlotsController {
   constructor(private readonly slots: SlotsService) {}
 
+  /* Odds are public information — the lobby shows them before anyone signs in. */
   @Get('paytable')
   paytable(): SlotsPaytable {
     return this.slots.getPaytable();
@@ -20,7 +24,8 @@ export class SlotsController {
   /* A spin creates nothing, so it answers 200 rather than Nest's default 201. */
   @Post('spin')
   @HttpCode(HttpStatus.OK)
-  spin(@Body() { bet }: SpinSlotsDto): SpinResult {
-    return this.slots.spin(bet);
+  @UseGuards(AuthGuard)
+  spin(@CurrentUser() user: User, @Body() { bet }: SpinSlotsDto): SpinResult {
+    return this.slots.spin(user.id, bet);
   }
 }

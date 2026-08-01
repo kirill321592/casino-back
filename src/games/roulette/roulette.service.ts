@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { env } from '../../common/config/env';
 import { RngService } from '../../common/rng/rng.service';
+import { UsersService } from '../../users/users.service';
 import { PlaceBetDto } from './dto/place-bet.dto';
 import {
   OUTSIDE_MULTIPLIER,
@@ -9,14 +10,17 @@ import {
   RED_NUMBERS,
   STRAIGHT_MULTIPLIER,
 } from './roulette.constants';
-import { Bet, BetType, Round, RoundResult, RoundState } from './roulette.types';
+import { Bet, BetType, PlacedBet, Round, RoundResult, RoundState } from './roulette.types';
 
 @Injectable()
 export class RouletteService {
   private round: Round = this.createRound();
   private bets: Bet[] = [];
 
-  constructor(private readonly rng: RngService) {}
+  constructor(
+    private readonly rng: RngService,
+    private readonly users: UsersService,
+  ) {}
 
   getState(): RoundState {
     return {
@@ -27,7 +31,11 @@ export class RouletteService {
     };
   }
 
-  placeBet(playerId: string, bet: PlaceBetDto): Bet {
+  /**
+   * The stake leaves the balance the moment the chip lands, the way it does on a
+   * real table — so the round can never pay out more than the player could cover.
+   */
+  placeBet(userId: string, bet: PlaceBetDto): PlacedBet {
     if (this.round.status !== 'betting' || bet.roundId !== this.round.id) {
       throw new Error('This round is closed');
     }
@@ -35,19 +43,28 @@ export class RouletteService {
       throw new Error('A straight bet needs a number');
     }
 
-    const placedBet: Bet = { playerId, type: bet.type, amount: bet.amount, number: bet.number };
+    const balance = this.users.debit(userId, bet.amount);
+    const placedBet: Bet = {
+      userId,
+      type: bet.type,
+      amount: bet.amount,
+      number: bet.number,
+    };
     this.bets.push(placedBet);
-    return placedBet;
+    return { bet: placedBet, balance };
   }
 
+  /** Settles the round: winnings are credited here, not when a client asks for them. */
   spin(): RoundResult {
     this.round.status = 'spinning';
     const number = this.rng.int(POCKET_COUNT);
     const payouts = this.bets.reduce<Record<string, number>>((result, bet) => {
       const multiplier = this.getMultiplier(bet, number);
-      if (multiplier) result[bet.playerId] = (result[bet.playerId] ?? 0) + bet.amount * multiplier;
+      if (multiplier) result[bet.userId] = (result[bet.userId] ?? 0) + bet.amount * multiplier;
       return result;
     }, {});
+
+    for (const [userId, amount] of Object.entries(payouts)) this.users.credit(userId, amount);
     return { number, payouts };
   }
 
@@ -58,7 +75,11 @@ export class RouletteService {
   }
 
   private createRound(): Round {
-    return { id: randomUUID(), status: 'betting', closesAt: Date.now() + env.roundDurationMs };
+    return {
+      id: randomUUID(),
+      status: 'betting',
+      closesAt: Date.now() + env.roundDurationMs,
+    };
   }
 
   private getMultiplier(bet: Bet, number: number): number {

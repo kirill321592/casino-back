@@ -19,4 +19,6 @@ export interface SpinResult {
   bet: number;
   multiplier: number;
   winnings: number;
+  /** The player's balance once the stake and any winnings have settled. */
+  balance: number;
 }
