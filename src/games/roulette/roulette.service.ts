@@ -22,11 +22,14 @@ export class RouletteService {
     private readonly users: UsersService,
   ) {}
 
+  /* Read fresh on every call: `closesIn` is only true at the moment it is sent. */
   getState(): RoundState {
     return {
       id: this.round.id,
       status: this.round.status,
       closesAt: new Date(this.round.closesAt).toISOString(),
+      closesIn: Math.max(0, this.round.closesAt - Date.now()),
+      durationMs: env.roundDurationMs,
       betsCount: this.bets.length,
     };
   }
@@ -51,7 +54,7 @@ export class RouletteService {
       number: bet.number,
     };
     this.bets.push(placedBet);
-    return { bet: placedBet, balance };
+    return { bet: placedBet, balance, roundId: this.round.id };
   }
 
   /** Settles the round: winnings are credited here, not when a client asks for them. */

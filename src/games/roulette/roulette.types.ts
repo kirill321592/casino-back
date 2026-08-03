@@ -20,6 +20,12 @@ export interface Bet {
 export interface PlacedBet {
   bet: Bet;
   balance: number;
+  /**
+   * The round the stake was taken for. A slow acceptance can reach the client
+   * after that round has already paid out, and without this the client can only
+   * guess whether the chip and the balance it carries are still current.
+   */
+  roundId: string;
 }
 
 export interface Round {
@@ -32,6 +38,15 @@ export interface RoundState {
   id: string;
   status: RoundStatus;
   closesAt: string;
+  /**
+   * The same deadline as a duration, measured against the server's own clock.
+   * `closesAt` alone is only as good as the client's clock: a browser a few
+   * minutes out shows a countdown that is plainly wrong, and one badly out shows
+   * nonsense. A duration is immune to that, so it is what clients should render.
+   */
+  closesIn: number;
+  /** Full length of the betting window, so a client can show progress through it. */
+  durationMs: number;
   betsCount: number;
 }
 

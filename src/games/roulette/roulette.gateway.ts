@@ -68,8 +68,8 @@ export class RouletteGateway implements OnModuleInit, OnGatewayConnection {
     }
 
     try {
-      const { bet: placed, balance } = this.roulette.placeBet(userId, bet);
-      client.emit('bet:accepted', { ...placed, balance });
+      const { bet: placed, balance, roundId } = this.roulette.placeBet(userId, bet);
+      client.emit('bet:accepted', { ...placed, balance, roundId });
       this.server.emit('round:state', this.roulette.getState());
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to place bet';
