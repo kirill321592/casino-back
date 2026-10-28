@@ -11,6 +11,8 @@ export interface SlotSymbol {
 /** Fetched by the client so the paytable it renders comes from the server. */
 export interface SlotsPaytable {
   reelCount: number;
+  /** Theoretical return to player as a fraction, e.g. 0.96 for 96%. */
+  rtp: number;
   symbols: Array<Omit<SlotSymbol, 'weight'>>;
 }
 

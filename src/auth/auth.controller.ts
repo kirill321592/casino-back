@@ -8,6 +8,7 @@ import { AuthService } from './auth.service';
 import { AuthSession } from './auth.types';
 import { CurrentUser } from './current-user.decorator';
 import { CredentialsDto } from './dto/credentials.dto';
+import { SignUpDto } from './dto/sign-up.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -18,10 +19,10 @@ export class AuthController {
 
   @Post('signup')
   async signUp(
-    @Body() credentials: CredentialsDto,
+    @Body() signUp: SignUpDto,
     @Res({ passthrough: true }) response: Response,
   ): Promise<UserProfile> {
-    return this.start(await this.auth.signUp(credentials), response);
+    return this.start(await this.auth.signUp(signUp), response);
   }
 
   /* Signing in creates no resource, so 200 rather than Nest's default 201. */

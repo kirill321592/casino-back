@@ -1,10 +1,13 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { selfExclusionMessage } from '../responsible-gaming/limits';
 import { UsersService } from '../users/users.service';
 import { User } from '../users/users.types';
 import { AuthSession, JwtPayload } from './auth.types';
 import { CredentialsDto } from './dto/credentials.dto';
+import { SignUpDto } from './dto/sign-up.dto';
 import { hashPassword, verifyPassword } from './password';
+import { TERMS_VERSION } from './terms';
 
 /**
  * A password hash of a value nobody can sign in with. Comparing against it when
@@ -20,8 +23,9 @@ export class AuthService {
     private readonly jwt: JwtService,
   ) {}
 
-  async signUp({ username, password }: CredentialsDto): Promise<AuthSession> {
-    const user = this.users.create(username, await hashPassword(password));
+  /* The DTO has already insisted on both confirmations; recording them is creating the account. */
+  async signUp({ username, password }: SignUpDto): Promise<AuthSession> {
+    const user = this.users.create(username, await hashPassword(password), TERMS_VERSION);
     return this.issue(user);
   }
 
@@ -31,6 +35,10 @@ export class AuthService {
 
     // One message for both failures: which half was wrong is not the caller's business.
     if (!user || !matches) throw new UnauthorizedException('Incorrect username or password');
+    // Only after the password checks out, so the message cannot confirm an account exists.
+    if (this.users.isSelfExcluded(user)) {
+      throw new ForbiddenException(selfExclusionMessage(user.selfExcludedUntil!));
+    }
     return this.issue(user);
   }
 
@@ -49,6 +57,10 @@ export class AuthService {
 
     const user = this.users.findById(payload.sub);
     if (!user) throw new UnauthorizedException('Your session is no longer valid. Please sign in.');
+    // A session from before the break ends with it; the client treats this like any expiry.
+    if (this.users.isSelfExcluded(user)) {
+      throw new UnauthorizedException(selfExclusionMessage(user.selfExcludedUntil!));
+    }
     return user;
   }
 

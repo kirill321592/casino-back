@@ -2,7 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { RngService } from '../../common/rng/rng.service';
 import { UsersService } from '../../users/users.service';
 import { REEL_COUNT, SLOT_SYMBOLS } from './slots.constants';
+import { lineMultiplier, theoreticalRtp } from './slots.math';
 import { SlotsPaytable, SpinResult } from './slots.types';
+
+/* Fixed by the paytable, so worked out once rather than per request. */
+const RTP = theoreticalRtp();
 
 @Injectable()
 export class SlotsService {
@@ -14,6 +18,7 @@ export class SlotsService {
   getPaytable(): SlotsPaytable {
     return {
       reelCount: REEL_COUNT,
+      rtp: RTP,
       symbols: SLOT_SYMBOLS.map(({ symbol, payout3, payout2 }) => ({
         symbol,
         payout3,
@@ -34,7 +39,7 @@ export class SlotsService {
       { length: REEL_COUNT },
       () => this.rng.pickWeighted(SLOT_SYMBOLS, (entry) => entry.weight).symbol,
     );
-    const multiplier = this.getMultiplier(reels);
+    const multiplier = lineMultiplier(reels);
     const winnings = multiplier * bet;
 
     return {
@@ -44,20 +49,5 @@ export class SlotsService {
       winnings,
       balance: winnings > 0 ? this.users.credit(userId, winnings) : staked,
     };
-  }
-
-  /** Pays the best matching line: three of a kind, otherwise a pair. */
-  private getMultiplier(reels: string[]): number {
-    const counts = new Map<string, number>();
-    for (const symbol of reels) counts.set(symbol, (counts.get(symbol) ?? 0) + 1);
-
-    let best = 0;
-    for (const [symbol, count] of counts) {
-      if (count < 2) continue;
-      const def = SLOT_SYMBOLS.find((entry) => entry.symbol === symbol);
-      if (!def) continue;
-      best = Math.max(best, count >= 3 ? def.payout3 : def.payout2);
-    }
-    return best;
   }
 }
